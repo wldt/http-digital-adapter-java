@@ -1,4 +1,4 @@
-package it.wldt.adapter.http.digital;
+package it.wldt.adapter.http.digital.server;
 
 import com.google.gson.*;
 import io.undertow.server.HttpHandler;
@@ -16,10 +16,23 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+/**
+ * Factory class for creating HTTP handlers to handle various requests in an HTTP Digital Adapter.
+ * This class provides methods to create default routing handlers and specific handlers for actions,
+ * properties, events, relationships, and the digital twin instance.
+ *
+ * @author Marco Picone, Ph.D. - picone.m@gmail.com, Marta Spadoni University of Bologna
+ */
 public class HttpDigitalAdapterHandlersFactory {
 
     private final static String JSON_CONTENT_TYPE = "application/json";
 
+    /**
+     * Creates a default routing handler for the HTTP Digital Adapter based on the provided request listener.
+     *
+     * @param httpDigitalAdapterRequestListener The request listener implementing the HTTP Digital Adapter contract.
+     * @return The default routing handler.
+     */
     public static HttpHandler createDefaultRoutingHandler(HttpDigitalAdapterRequestListener httpDigitalAdapterRequestListener){
         return new RoutingHandler()
                 .add(Methods.GET, "/instance", createGetDigitalTwinInstanceHandler(httpDigitalAdapterRequestListener::onInstanceRequest))
@@ -41,6 +54,12 @@ public class HttpDigitalAdapterHandlersFactory {
                 .setFallbackHandler(new SimpleErrorPageHandler());
     }
 
+    /**
+     * Creates an HTTP handler for invoking a specific action on the digital twin.
+     *
+     * @param actionFunction The function to handle the action invocation.
+     * @return The action invocation handler.
+     */
     private static HttpHandler createInvokeActionHandler(BiFunction<String, String, Integer> actionFunction) {
         return exchange -> {
             String pathKey = exchange.getQueryParameters().get("key").getFirst();
@@ -52,6 +71,13 @@ public class HttpDigitalAdapterHandlersFactory {
         };
     }
 
+    /**
+     * Creates an HTTP handler for retrieving a list of components (properties, actions, events, relationships).
+     *
+     * @param componentsSupplier The supplier for obtaining the list of components.
+     * @param <T> The type of the components.
+     * @return The handler for retrieving a list of components.
+     */
     public static <T> HttpHandler createGetComponentsListHandler(Supplier<T> componentsSupplier){
         return exchange -> {
             exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, JSON_CONTENT_TYPE);
@@ -59,6 +85,13 @@ public class HttpDigitalAdapterHandlersFactory {
         };
     }
 
+    /**
+     * Creates an HTTP handler for retrieving a specific component (property, action, event, relationship).
+     *
+     * @param digitalTwinStateComponentProducer The function to produce the specified component.
+     * @param <T> The type of the component.
+     * @return The handler for retrieving a specific component.
+     */
     public static <T> HttpHandler createGetComponentHandler(Function<String, Optional<T>> digitalTwinStateComponentProducer){
         return exchange -> {
             String pathKey = exchange.getQueryParameters().get("key").getFirst();
@@ -71,6 +104,12 @@ public class HttpDigitalAdapterHandlersFactory {
         };
     }
 
+    /**
+     * Creates an HTTP handler for retrieving the digital twin instance.
+     *
+     * @param instanceSupplier The supplier for obtaining the digital twin instance.
+     * @return The handler for retrieving the digital twin instance.
+     */
     public static HttpHandler createGetDigitalTwinInstanceHandler(Supplier<DigitalTwin> instanceSupplier){
         return exchange -> {
             exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, JSON_CONTENT_TYPE);
@@ -85,22 +124,12 @@ public class HttpDigitalAdapterHandlersFactory {
         };
     }
 
-    public static HttpHandler createGetDigitalTwinStateHandler(Supplier<Collection<DigitalTwinStateProperty<?>>> digitalTwinStatePropertiesProducer,
-                                                               Supplier<Collection<DigitalTwinStateAction>> digitalTwinStateActionsProducer,
-                                                               Supplier<Collection<DigitalTwinStateEvent>> digitalTwinStateEventsProducer,
-                                                               Supplier<Collection<DigitalTwinStateRelationship<?>>> digitalTwinStateRelationshipsProducer){
-        return exchange -> {
-            exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, JSON_CONTENT_TYPE);
-            final Gson gson = new Gson();
-            final JsonObject responseObj = new JsonObject();
-            responseObj.add("properties", gson.toJsonTree(digitalTwinStatePropertiesProducer.get()));
-            responseObj.add("actions", gson.toJsonTree(digitalTwinStateActionsProducer.get()));
-            responseObj.add("events", gson.toJsonTree(digitalTwinStateEventsProducer.get()));
-            responseObj.add("relationships", getGson().toJsonTree(digitalTwinStateRelationshipsProducer.get()));
-            exchange.getResponseSender().send(gson.toJson(responseObj));
-        };
-    }
-
+    /**
+     * Creates an HTTP handler for retrieving the digital twin state.
+     *
+     * @param dtStateSupplier The supplier for obtaining the digital twin state.
+     * @return The handler for retrieving the digital twin state.
+     */
     public static HttpHandler createGetDigitalTwinStateHandler(Supplier<Optional<DigitalTwinState>> dtStateSupplier){
         return exchange -> {
 
@@ -140,6 +169,12 @@ public class HttpDigitalAdapterHandlersFactory {
         };
     }
 
+    /**
+     * Creates an HTTP handler for retrieving the digital twin state change list.
+     *
+     * @param dtStateChangeListSupplier The supplier for obtaining the digital twin state change list.
+     * @return The handler for retrieving the digital twin state change list.
+     */
     private static HttpHandler createGetDigitalTwinStateChangeListHandler(Supplier<Optional<Collection<DigitalTwinStateChange>>> dtStateChangeListSupplier) {
 
         return exchange -> {
@@ -171,6 +206,12 @@ public class HttpDigitalAdapterHandlersFactory {
 
     }
 
+    /**
+     * Creates an HTTP handler for reading the value of a specific property.
+     *
+     * @param propertyValueProducer The function to produce the value of the specified property.
+     * @return The handler for reading the value of a property.
+     */
     public static HttpHandler createReadPropertyValueHandler(Function<String, Optional<String>> propertyValueProducer){
         return exchange -> {
             exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
@@ -183,10 +224,20 @@ public class HttpDigitalAdapterHandlersFactory {
         };
     }
 
+    /**
+     * Returns a Gson instance configured with a custom serializer for handling relationship instances.
+     *
+     * @return A Gson instance.
+     */
     private static Gson getGson(){
         return new GsonBuilder().registerTypeAdapter(Map.class, getRelationshipInstancesSerializer()).create();
     }
 
+    /**
+     * Returns a custom serializer for handling relationship instances in Gson.
+     *
+     * @return A custom Gson serializer for relationship instances.
+     */
     private static JsonSerializer<Map<String, DigitalTwinStateRelationshipInstance<?>>> getRelationshipInstancesSerializer(){
         return (stringDigitalTwinStateRelationshipInstanceMap, type, jsonSerializationContext) ->
                 new Gson().toJsonTree(new LinkedList<>(stringDigitalTwinStateRelationshipInstanceMap.values()), LinkedList.class);

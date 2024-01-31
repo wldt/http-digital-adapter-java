@@ -1,5 +1,7 @@
 package it.wldt.adapter.http.digital;
 
+import it.wldt.adapter.http.digital.adapter.HttpDigitalAdapter;
+import it.wldt.adapter.http.digital.adapter.HttpDigitalAdapterConfiguration;
 import it.wldt.adapter.http.digital.utils.DefaultShadowingFunction;
 import it.wldt.adapter.http.digital.utils.DummyPhysicalAdapter;
 import it.wldt.adapter.http.digital.utils.DummyPhysicalAdapterConfiguration;
@@ -16,8 +18,20 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * TestMain class serves as the main entry point for testing Digital Twin functionality.
+ * It creates a Digital Twin instance, assigns physical adapters, and sets up an HTTP Digital Adapter.
+ * The Digital Twin Engine is used to manage and execute the created Digital Twin instance.
+ *
+ * @author Marco Picone, Ph.D. - picone.m@gmail.com, Marta Spadoni University of Bologna
+ */
 public class TestMain {
 
+    /**
+     * The main method where the execution begins.
+     *
+     * @param args Command-line arguments (not used in this context).
+     */
     public static void main(String[] args)  {
 
         try {
@@ -58,6 +72,13 @@ public class TestMain {
         }
     }
 
+    /**
+     * Creates a simple Physical Adapter with the provided ID and property keys.
+     *
+     * @param id             The ID of the Physical Adapter.
+     * @param propertiesKeys The list of property keys for the Physical Adapter.
+     * @return A new Physical Adapter instance.
+     */
     private static PhysicalAdapter createPhysicalAdapter(String id, List<String> propertiesKeys){
 
         return new PhysicalAdapter(id) {
