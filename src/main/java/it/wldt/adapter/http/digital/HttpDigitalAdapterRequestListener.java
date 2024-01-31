@@ -9,6 +9,12 @@ import java.util.Optional;
 
 public interface HttpDigitalAdapterRequestListener {
 
+    Optional<DigitalTwinState> onStateGet();
+
+    Optional<DigitalTwinState> onPreviousStateGet();
+
+    Optional<Collection<DigitalTwinStateChange>> onStateChangesListGet();
+
     Optional<DigitalTwinStateProperty<?>> onPropertyGet(String propertyKey);
 
     Optional<DigitalTwinStateAction> onActionGet(String actionKey);

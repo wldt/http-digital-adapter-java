@@ -2,15 +2,13 @@ package it.wldt.adapter.http.digital.utils;
 
 import it.wldt.adapter.digital.event.DigitalActionWldtEvent;
 import it.wldt.adapter.physical.PhysicalAssetDescription;
+import it.wldt.adapter.physical.PhysicalAssetRelationshipInstance;
 import it.wldt.adapter.physical.event.PhysicalAssetEventWldtEvent;
 import it.wldt.adapter.physical.event.PhysicalAssetPropertyWldtEvent;
 import it.wldt.adapter.physical.event.PhysicalAssetRelationshipInstanceCreatedWldtEvent;
 import it.wldt.adapter.physical.event.PhysicalAssetRelationshipInstanceDeletedWldtEvent;
 import it.wldt.core.model.ShadowingFunction;
-import it.wldt.core.state.DigitalTwinStateAction;
-import it.wldt.core.state.DigitalTwinStateEvent;
-import it.wldt.core.state.DigitalTwinStateEventNotification;
-import it.wldt.core.state.DigitalTwinStateProperty;
+import it.wldt.core.state.*;
 import it.wldt.exception.EventBusException;
 import it.wldt.exception.WldtDigitalTwinStateEventNotificationException;
 import it.wldt.exception.WldtDigitalTwinStateException;
@@ -73,6 +71,7 @@ public class  DefaultShadowingFunction extends ShadowingFunction {
         this.digitalTwinStateManager.startStateTransaction();
 
         adaptersPhysicalAssetDescriptionMap.forEach((id, pad) -> {
+
             pad.getProperties()
                     .forEach(p -> {
                         try {
@@ -81,6 +80,7 @@ public class  DefaultShadowingFunction extends ShadowingFunction {
                             e.printStackTrace();
                         }
                     });
+
             pad.getActions().forEach(a -> {
                 try {
                     this.digitalTwinStateManager.enableAction(new DigitalTwinStateAction(a.getKey(), a.getType(), a.getContentType()));
@@ -88,11 +88,26 @@ public class  DefaultShadowingFunction extends ShadowingFunction {
                     e.printStackTrace();
                 }
             });
+
             pad.getEvents().forEach(e -> {
                 try {
                     this.digitalTwinStateManager.registerEvent(new DigitalTwinStateEvent(e.getKey(), e.getType()));
                 } catch (Exception ex) {
                     ex.printStackTrace();
+                }
+            });
+
+            pad.getRelationships().forEach(relationship -> {
+                try{
+                    if(relationship != null && relationship.getName().equals(DummyPhysicalAdapter.INSIDE_IN_RELATIONSHIP)){
+
+                        DigitalTwinStateRelationship<String> insideInDtStateRelationship = new DigitalTwinStateRelationship<>(relationship.getName(), relationship.getName());
+                        this.digitalTwinStateManager.createRelationship(insideInDtStateRelationship);
+                        observePhysicalAssetRelationship(relationship);
+                        System.out.println("[TestShadowingFunction] -> onDigitalTwinBound() -> Relationship Created & Observed :" + relationship.getName());
+                    }
+                }catch (Exception e){
+                    e.printStackTrace();
                 }
             });
         });
@@ -151,7 +166,36 @@ public class  DefaultShadowingFunction extends ShadowingFunction {
     }
 
     @Override
-    protected void onPhysicalAssetRelationshipEstablished(PhysicalAssetRelationshipInstanceCreatedWldtEvent<?> physicalAssetRelationshipWldtEvent) {
+    protected void onPhysicalAssetRelationshipEstablished(PhysicalAssetRelationshipInstanceCreatedWldtEvent<?> physicalAssetRelationshipInstanceCreatedWldtEvent) {
+
+        try{
+
+            if(physicalAssetRelationshipInstanceCreatedWldtEvent != null
+                    && physicalAssetRelationshipInstanceCreatedWldtEvent.getBody() != null){
+
+                PhysicalAssetRelationshipInstance<?> paRelInstance = physicalAssetRelationshipInstanceCreatedWldtEvent.getBody();
+
+                if(paRelInstance.getTargetId() instanceof String){
+
+                    String relName = paRelInstance.getRelationship().getName();
+                    String relKey = paRelInstance.getKey();
+                    String relTargetId = (String)paRelInstance.getTargetId();
+
+                    DigitalTwinStateRelationshipInstance<String> instance = new DigitalTwinStateRelationshipInstance<String>(relName, relTargetId, relKey);
+
+                    //Update Digital Twin State
+                    //NEW from 0.3.0 -> Start State Transaction
+                    this.digitalTwinStateManager.startStateTransaction();
+
+                    this.digitalTwinStateManager.addRelationshipInstance(instance);
+
+                    //NEW from 0.3.0 -> Commit State Transaction
+                    this.digitalTwinStateManager.commitStateTransaction();
+                }
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
 
     }
 

@@ -4,10 +4,13 @@ import it.wldt.adapter.physical.*;
 import it.wldt.adapter.physical.event.PhysicalAssetActionWldtEvent;
 import it.wldt.adapter.physical.event.PhysicalAssetEventWldtEvent;
 import it.wldt.adapter.physical.event.PhysicalAssetPropertyWldtEvent;
+import it.wldt.adapter.physical.event.PhysicalAssetRelationshipInstanceCreatedWldtEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 public class DummyPhysicalAdapter extends ConfigurablePhysicalAdapter<DummyPhysicalAdapterConfiguration> {
@@ -30,9 +33,13 @@ public class DummyPhysicalAdapter extends ConfigurablePhysicalAdapter<DummyPhysi
 
     public static final String OVERHEATING_EVENT_KEY = "overheating";
 
+    public static final String INSIDE_IN_RELATIONSHIP = "insideIn";
+
     private boolean isTelemetryOn = false;
 
     private Random random = new Random();
+
+    private PhysicalAssetRelationship<String> insideInRelationship = null;
 
     public DummyPhysicalAdapter(String id, DummyPhysicalAdapterConfiguration configuration) {
         super(id, configuration);
@@ -85,6 +92,10 @@ public class DummyPhysicalAdapter extends ConfigurablePhysicalAdapter<DummyPhysi
                 add(new PhysicalAssetEvent(OVERHEATING_EVENT_KEY,"text/plain"));
             }});
 
+            //Create Test Relationship to describe that the Physical Device is inside a building
+            this.insideInRelationship = new PhysicalAssetRelationship<>(INSIDE_IN_RELATIONSHIP);
+            physicalAssetDescription.getRelationships().add(insideInRelationship);
+
             this.notifyPhysicalAdapterBound(physicalAssetDescription);
 
         }catch (Exception e){
@@ -99,6 +110,12 @@ public class DummyPhysicalAdapter extends ConfigurablePhysicalAdapter<DummyPhysi
                     //Before the telemetry messages send an overheating event
                     Thread.sleep(MESSAGE_SLEEP_PERIOD_MS);
                     publishPhysicalAssetEventWldtEvent(new PhysicalAssetEventWldtEvent<String>(OVERHEATING_EVENT_KEY, "overheating-low"));
+
+                    //Sleep before sending relationship instance
+                    Thread.sleep(MESSAGE_SLEEP_PERIOD_MS);
+
+                    //Emulate Relationship Instance Creation
+                    publishPhysicalRelationshipInstance();
 
                     for(int i = 0; i< TARGET_PHYSICAL_ASSET_PROPERTY_UPDATE_MESSAGES; i++){
 
@@ -116,6 +133,25 @@ public class DummyPhysicalAdapter extends ConfigurablePhysicalAdapter<DummyPhysi
                     e.printStackTrace();
                 }
             }).start();
+    }
+
+    private void publishPhysicalRelationshipInstance() {
+        try{
+
+            String relationshipTarget = "building-hq";
+
+            Map<String, Object> relationshipMetadata = new HashMap<>();
+            relationshipMetadata.put("floor", "f0");
+            relationshipMetadata.put("room", "r0");
+
+            PhysicalAssetRelationshipInstance<String> relInstance = this.insideInRelationship.createRelationshipInstance(relationshipTarget, relationshipMetadata);
+
+            PhysicalAssetRelationshipInstanceCreatedWldtEvent<String> relInstanceEvent = new PhysicalAssetRelationshipInstanceCreatedWldtEvent<>(relInstance);
+            publishPhysicalAssetRelationshipCreatedWldtEvent(relInstanceEvent);
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
     }
 
     @Override

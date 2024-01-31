@@ -14,11 +14,11 @@ repositories {
 }
 
 dependencies {
-    api("io.undertow:undertow-core:2.1.0.Final")
+    api("io.undertow:undertow-core:2.2.27.Final")
     api("com.github.spullara.mustache.java:compiler:0.9.10")
     api("ch.qos.logback:logback-classic:1.4.12")
     api("com.google.code.gson:gson:2.10")
-    api("io.github.wldt:wldt-core:0.3.0-alpha-24012024")
+    api("io.github.wldt:wldt-core:0.3.0-alpha-31012024")
     testImplementation("junit:junit:4.13.2")
 }
 

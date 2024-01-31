@@ -135,6 +135,51 @@ public class HttpDigitalAdapter extends DigitalAdapter<HttpDigitalAdapterConfigu
     }
 
     @Override
+    public Optional<DigitalTwinState> onStateGet() {
+        try {
+
+            if(this.updatedDigitalTwinState == null)
+                return Optional.empty();
+
+            return Optional.of(this.updatedDigitalTwinState);
+
+        } catch (Exception e) {
+            logger.error("Error loading DT State: {} ! Error: {}", updatedDigitalTwinState, e.toString());
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<DigitalTwinState> onPreviousStateGet() {
+        try {
+
+            if(this.previousDigitalTwinState == null)
+                return Optional.empty();
+
+            return Optional.of(this.previousDigitalTwinState);
+
+        } catch (Exception e) {
+            logger.error("Error loading Previous DT State: {} ! Error: {}", previousDigitalTwinState, e.toString());
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<Collection<DigitalTwinStateChange>> onStateChangesListGet() {
+        try {
+
+            if(this.latestDigitalTwinStateChangeList == null)
+                return Optional.empty();
+
+            return Optional.of(this.latestDigitalTwinStateChangeList);
+
+        } catch (Exception e) {
+            logger.error("Error loading DT State Change List: {} ! Error: {}", latestDigitalTwinStateChangeList, e.toString());
+            return Optional.empty();
+        }
+    }
+
+    @Override
     public Optional<DigitalTwinStateProperty<?>> onPropertyGet(String propertyKey) {
         try {
 

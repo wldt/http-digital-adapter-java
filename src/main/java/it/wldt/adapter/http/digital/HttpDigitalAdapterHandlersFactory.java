@@ -8,10 +8,10 @@ import io.undertow.util.Headers;
 import io.undertow.util.Methods;
 import it.wldt.core.engine.DigitalTwin;
 import it.wldt.core.state.*;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Optional;
+
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -23,22 +23,21 @@ public class HttpDigitalAdapterHandlersFactory {
     public static HttpHandler createDefaultRoutingHandler(HttpDigitalAdapterRequestListener httpDigitalAdapterRequestListener){
         return new RoutingHandler()
                 .add(Methods.GET, "/instance", createGetDigitalTwinInstanceHandler(httpDigitalAdapterRequestListener::onInstanceRequest))
-                .add(Methods.GET, "/state", createGetDigitalTwinStateHandler(httpDigitalAdapterRequestListener::onPropertiesGet,
-                                                                                    httpDigitalAdapterRequestListener::onActionsGet,
-                                                                                    httpDigitalAdapterRequestListener::onEventsGet,
-                                                                                    httpDigitalAdapterRequestListener::onRelationshipsGet))
-                .add(Methods.GET,"/properties", createGetComponentsListHandler(httpDigitalAdapterRequestListener::onPropertiesGet))
-                .add(Methods.GET, "/properties/{key}", createGetComponentHandler(httpDigitalAdapterRequestListener::onPropertyGet))
-                .add(Methods.GET, "/properties/{key}/value", createReadPropertyValueHandler(httpDigitalAdapterRequestListener::onReadProperty))
-                .add(Methods.GET,"/actions", createGetComponentsListHandler(httpDigitalAdapterRequestListener::onActionsGet))
-                .add(Methods.GET, "/actions/{key}", createGetComponentHandler(httpDigitalAdapterRequestListener::onActionGet))
-                .add(Methods.POST, "/actions/{key}", createInvokeActionHandler(httpDigitalAdapterRequestListener::onActionRequest))
-                .add(Methods.GET,"/events", createGetComponentsListHandler(httpDigitalAdapterRequestListener::onEventsGet))
-                .add(Methods.GET, "/events/{key}", createGetComponentHandler(httpDigitalAdapterRequestListener::onEventGet))
-                .add(Methods.GET,"/events/notifications", createGetComponentsListHandler(httpDigitalAdapterRequestListener::onEventNotificationGet))
-                .add(Methods.GET, "/relationships", createGetComponentsListHandler(httpDigitalAdapterRequestListener::onRelationshipsGet))
-                .add(Methods.GET, "relationships/{key}", createGetComponentHandler(httpDigitalAdapterRequestListener::onRelationshipGet))
-                .add(Methods.GET, "/relationships/{key}/instances", createGetComponentHandler(httpDigitalAdapterRequestListener::onRelationshipInstancesGet))
+                .add(Methods.GET, "/state", createGetDigitalTwinStateHandler(httpDigitalAdapterRequestListener::onStateGet))
+                .add(Methods.GET, "/state/previous", createGetDigitalTwinStateHandler(httpDigitalAdapterRequestListener::onPreviousStateGet))
+                .add(Methods.GET, "/state/changes", createGetDigitalTwinStateChangeListHandler(httpDigitalAdapterRequestListener::onStateChangesListGet))
+                .add(Methods.GET,"/state/properties", createGetComponentsListHandler(httpDigitalAdapterRequestListener::onPropertiesGet))
+                .add(Methods.GET, "/state/properties/{key}", createGetComponentHandler(httpDigitalAdapterRequestListener::onPropertyGet))
+                .add(Methods.GET, "/state/properties/{key}/value", createReadPropertyValueHandler(httpDigitalAdapterRequestListener::onReadProperty))
+                .add(Methods.GET,"/state/actions", createGetComponentsListHandler(httpDigitalAdapterRequestListener::onActionsGet))
+                .add(Methods.GET, "/state/actions/{key}", createGetComponentHandler(httpDigitalAdapterRequestListener::onActionGet))
+                .add(Methods.POST, "/state/actions/{key}", createInvokeActionHandler(httpDigitalAdapterRequestListener::onActionRequest))
+                .add(Methods.GET,"/state/events", createGetComponentsListHandler(httpDigitalAdapterRequestListener::onEventsGet))
+                .add(Methods.GET, "/state/events/{key}", createGetComponentHandler(httpDigitalAdapterRequestListener::onEventGet))
+                .add(Methods.GET,"/state/events/notifications", createGetComponentsListHandler(httpDigitalAdapterRequestListener::onEventNotificationGet))
+                .add(Methods.GET, "/state/relationships", createGetComponentsListHandler(httpDigitalAdapterRequestListener::onRelationshipsGet))
+                .add(Methods.GET, "/state/relationships/{key}", createGetComponentHandler(httpDigitalAdapterRequestListener::onRelationshipGet))
+                .add(Methods.GET, "/state/relationships/{key}/instances", createGetComponentHandler(httpDigitalAdapterRequestListener::onRelationshipInstancesGet))
                 .setFallbackHandler(new SimpleErrorPageHandler());
     }
 
@@ -100,6 +99,76 @@ public class HttpDigitalAdapterHandlersFactory {
             responseObj.add("relationships", getGson().toJsonTree(digitalTwinStateRelationshipsProducer.get()));
             exchange.getResponseSender().send(gson.toJson(responseObj));
         };
+    }
+
+    public static HttpHandler createGetDigitalTwinStateHandler(Supplier<Optional<DigitalTwinState>> dtStateSupplier){
+        return exchange -> {
+
+            // Check if the supplier and the DT State are available otherwise sends back a 500 Internal Server Error
+            if(dtStateSupplier == null || !dtStateSupplier.get().isPresent()){
+                exchange.setStatusCode(500);
+                exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+                exchange.getResponseSender().send("DigitalTwinState Supplier = Null ! Internal Server Error");
+            }
+            else {
+
+                DigitalTwinState digitalTwinState = dtStateSupplier.get().get();
+
+                Collection<DigitalTwinStateProperty<?>> digitalTwinStatePropertiesList = (digitalTwinState.getPropertyList().isPresent()) ? digitalTwinState.getPropertyList().get() : new ArrayList<>();
+                Collection<DigitalTwinStateAction> digitalTwinStateActionsList = (digitalTwinState.getActionList().isPresent()) ? digitalTwinState.getActionList().get() : new ArrayList<>();
+                Collection<DigitalTwinStateEvent> digitalTwinStateEventsList = (digitalTwinState.getEventList().isPresent()) ? digitalTwinState.getEventList().get() : new ArrayList<>();
+                Collection<DigitalTwinStateRelationship<?>> digitalTwinStateRelationships = (digitalTwinState.getRelationshipList().isPresent()) ? digitalTwinState.getRelationshipList().get() : new ArrayList<>();
+
+                exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, JSON_CONTENT_TYPE);
+
+                final Gson gson = new Gson();
+                final JsonObject responseObj = new JsonObject();
+
+                // Instant Date String
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
+                String formattedDateTime = formatter.format(digitalTwinState.getEvaluationInstant());
+
+                responseObj.addProperty("evaluation_instant_epoch_ms", digitalTwinState.getEvaluationInstant().toEpochMilli());
+                responseObj.addProperty("evaluation_instant_date", formattedDateTime);
+                responseObj.add("properties", gson.toJsonTree(digitalTwinStatePropertiesList));
+                responseObj.add("actions", gson.toJsonTree(digitalTwinStateActionsList));
+                responseObj.add("events", gson.toJsonTree(digitalTwinStateEventsList));
+                responseObj.add("relationships", getGson().toJsonTree(digitalTwinStateRelationships));
+
+                exchange.getResponseSender().send(gson.toJson(responseObj));
+            }
+        };
+    }
+
+    private static HttpHandler createGetDigitalTwinStateChangeListHandler(Supplier<Optional<Collection<DigitalTwinStateChange>>> dtStateChangeListSupplier) {
+
+        return exchange -> {
+
+            try {
+
+                // Check if the supplier and the DT State are available otherwise sends back a 500 Internal Server Error
+                if(dtStateChangeListSupplier == null || !dtStateChangeListSupplier.get().isPresent()){
+                    exchange.setStatusCode(500);
+                    exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+                    exchange.getResponseSender().send("DigitalTwinState Supplier = Null ! Internal Server Error");
+                }
+                else {
+
+                    Collection<DigitalTwinStateChange> dtStateChangeList = dtStateChangeListSupplier.get().get();
+
+                    exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, JSON_CONTENT_TYPE);
+
+                    final Gson gson = new Gson();
+                    exchange.getResponseSender().send(gson.toJson(dtStateChangeList));
+                }
+
+            }catch (Exception e){
+                exchange.setStatusCode(500);
+                exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+                exchange.getResponseSender().send("Internal Server Error Building DT State Change List");
+            }
+        };
+
     }
 
     public static HttpHandler createReadPropertyValueHandler(Function<String, Optional<String>> propertyValueProducer){
