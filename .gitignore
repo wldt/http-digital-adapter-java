@@ -30,6 +30,8 @@ bin/
 
 gradle.properties
 
+.idea
+
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
