@@ -6,6 +6,8 @@ import it.wldt.adapter.http.digital.server.HttpDigitalAdapterRequestListener;
 import it.wldt.core.engine.DigitalTwin;
 import it.wldt.core.state.*;
 import it.wldt.exception.EventBusException;
+import it.wldt.storage.model.StorageStats;
+import it.wldt.storage.query.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.*;
@@ -54,6 +56,11 @@ public class HttpDigitalAdapter extends DigitalAdapter<HttpDigitalAdapterConfigu
     private Undertow server;
 
     /**
+     * The Query Executor used to interact with the Storage Manager
+     */
+    private QueryExecutor queryExecutor;
+
+    /**
      * Constructs an HTTP Digital Adapter instance with the given configuration and digital twin instance.
      *
      * @param configuration The configuration for the HTTP Digital Adapter.
@@ -61,6 +68,8 @@ public class HttpDigitalAdapter extends DigitalAdapter<HttpDigitalAdapterConfigu
      */
     public HttpDigitalAdapter(HttpDigitalAdapterConfiguration configuration, DigitalTwin digitalTwinInstance) {
         super(configuration.getId(), configuration);
+
+        // Set the Digital Twin Instance
         this.digitalTwinInstance = digitalTwinInstance;
     }
 
@@ -104,12 +113,21 @@ public class HttpDigitalAdapter extends DigitalAdapter<HttpDigitalAdapterConfigu
      */
     @Override
     public void onAdapterStart() {
+
+        // Create the query executor associated to the target DT Id and Adapter Id
+        this.queryExecutor = new QueryExecutor(this.digitalTwinId, this.getId());
+
+        // Create the Query Executor
         this.server = Undertow.builder()
                 .addHttpListener(getConfiguration().getPort(), getConfiguration().getHost())
                 .setHandler(createDefaultRoutingHandler(this))
                 .build();
+
+        // Start the Undertow Server
         this.server.start();
+
         logger.info("HTTP Digital Adapter Started");
+
         this.notifyDigitalAdapterBound();
     }
 
@@ -540,6 +558,46 @@ public class HttpDigitalAdapter extends DigitalAdapter<HttpDigitalAdapterConfigu
     @Override
     public DigitalTwin onInstanceRequest() {
         return this.digitalTwinInstance;
+    }
+
+    /**
+     * Retrieves information about the Digital Twin Storage
+     * @return An instance of StorageInfo with the details of the available Stored Information
+     */
+    @Override
+    public StorageStats onStorageInfoRequest() {
+        try{
+
+            // Create Query Request to the Storage Manager for the Last Digital Twin State
+            QueryRequest queryRequest = new QueryRequest();
+            queryRequest.setResourceType(QueryResourceType.STORAGE_STATS);
+            queryRequest.setRequestType(QueryRequestType.LAST_VALUE);
+
+            // Send the Query Request to the Storage Manager for the target DT
+            QueryResult<?> queryResult = this.queryExecutor.syncQueryExecute(queryRequest);
+
+            if(queryResult != null && queryResult.isSuccessful() && queryResult.getTotalResults() == 1 && queryResult.getResults().get(0) instanceof StorageStats)
+                return (StorageStats) queryResult.getResults().get(0);
+            else
+                return null;
+
+        }catch (Exception e){
+            logger.error("Error retrieving Storage Info ! Msg: {}", e.getLocalizedMessage());
+            return null;
+        }
+    }
+
+    @Override
+    public QueryResult<?> onQueryRequest(QueryRequest queryRequest) {
+
+        try {
+            // Send the Query Request to the Storage Manager for the target DT
+            return this.queryExecutor.syncQueryExecute(queryRequest);
+        }
+        catch (Exception e){
+            logger.error("Error executing Query Request ! Msg: {}", e.getLocalizedMessage());
+            return new QueryResult<>(queryRequest, false, "Error executing Query Request ! Msg: " + e.getLocalizedMessage());
+        }
     }
 
 }

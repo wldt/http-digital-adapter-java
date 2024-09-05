@@ -93,7 +93,7 @@ public class DummyPhysicalAdapter extends ConfigurablePhysicalAdapter<DummyPhysi
             }});
 
             //Create Test Relationship to describe that the Physical Device is inside a building
-            this.insideInRelationship = new PhysicalAssetRelationship<>(INSIDE_IN_RELATIONSHIP);
+            this.insideInRelationship = new PhysicalAssetRelationship<>(INSIDE_IN_RELATIONSHIP, "inside-relationship");
             physicalAssetDescription.getRelationships().add(insideInRelationship);
 
             this.notifyPhysicalAdapterBound(physicalAssetDescription);

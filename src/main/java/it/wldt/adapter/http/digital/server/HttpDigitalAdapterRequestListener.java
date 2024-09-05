@@ -2,6 +2,9 @@ package it.wldt.adapter.http.digital.server;
 
 import it.wldt.core.engine.DigitalTwin;
 import it.wldt.core.state.*;
+import it.wldt.storage.model.StorageStats;
+import it.wldt.storage.query.QueryRequest;
+import it.wldt.storage.query.QueryResult;
 
 import java.util.Collection;
 import java.util.List;
@@ -136,4 +139,17 @@ public interface HttpDigitalAdapterRequestListener {
      * @return The digital twin instance.
      */
     DigitalTwin onInstanceRequest();
+
+    /**
+     * Handles the request to retrieve the Digital Twin Storage Information
+     */
+    StorageStats onStorageInfoRequest();
+
+    /**
+     * Handles the request to execute Storage Query.
+     * @param queryRequest The query request to execute.
+     * @return The result of the query request.
+     */
+    QueryResult<?> onQueryRequest(QueryRequest queryRequest);
+
 }

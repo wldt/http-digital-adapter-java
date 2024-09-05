@@ -1,7 +1,7 @@
 # HTTP Digital Adapter Java
 
-The `HttpDigitalAdapter` is a powerful component designed to facilitate the integration of Digital Twins into HTTP-based systems. 
-It serves as a bridge between a Digital Twin and HTTP-based applications, allowing developers to easily expose and interact with 
+The `HttpDigitalAdapter` is a powerful component designed to facilitate the integration of Digital Twins into HTTP-based systems.
+It serves as a bridge between a Digital Twin and HTTP-based applications, allowing developers to easily expose and interact with
 Digital Twin data and functionalities over HTTP.
 
 Key Features:
@@ -10,10 +10,9 @@ Key Features:
 - **Dynamic Configuration:** Offers a flexible configuration mechanism through the HttpDigitalAdapterConfiguration, allowing developers to customize the adapter's behavior based on specific requirements.
 - **State Monitoring:** Monitors changes in the Digital Twin state and provides HTTP endpoints to query the state of the Digital Twin (properties, events, actions and relationships).
 - **Event Notifications:** Allows developers to retrieve event notifications triggered by changes in the Digital Twin state.
+- **Storage & Query:** Since version 0.2 the HTTP Digital Adapter is able to retrieve Storage Statistics and execute query on the target DT
 
-<div align="center">
-  <img class="center" src="images/adapter_schema.jpg" width="100%">
-</div>
+![HTTP Digital Adapter](images/http_digital_adapter_schema.jpg)
 
 A complete example is provided in the `test` folder with a complete DT Creation in the `TestMain` class together with a demo DT with and emulated Physical Adapter and the HTTP Digital Adapter.
 
@@ -21,9 +20,10 @@ A complete example is provided in the `test` folder with a complete DT Creation 
 
 The correct mapping and compatibility between versions is reported in the following table
 
-| **http-digital-adapter** |   wldt-core 0.2.1  |   wldt-core 0.3.0  |
-|:------------------------:|:------------------:|:------------------:|
-|          0.1.1           |         :x:        | :white_check_mark: |
+| **http-digital-adapter** |   wldt-core 0.2.1  |   wldt-core 0.3.0  |   wldt-core 0.4.0  |
+|:------------------------:|:------------------:|:------------------:|:------------------:|
+|          0.1.1           |         :x:        | :white_check_mark: | :white_check_mark: |
+|          0.2             |         :x:        |         :x:        | :white_check_mark: |
 
 ## Installation
 
@@ -35,21 +35,21 @@ To use HttpDigitalAdapter in your Java project, you can include it as a dependen
 <dependency>
     <groupId>io.github.wldt</groupId>
     <artifactId>http-digital-adapter</artifactId>
-    <version>0.1.1</version>
+    <version>0.2</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```groovy
-implementation 'io.github.wldt:http-digital-adapter:0.1.1'
+implementation 'io.github.wldt:http-digital-adapter:0.2'
 ```
 
 ## Class Structure & Functionalities
 
 ### HttpDigitalAdapterConfiguration
 
-The `HttpDigitalAdapterConfiguration` is a crucial part of the HttpDigitalAdapter, providing the necessary settings to 
+The `HttpDigitalAdapterConfiguration` is a crucial part of the HttpDigitalAdapter, providing the necessary settings to
 tailor the adapter's behavior to meet specific needs.
 
 Represents the configuration for an HTTP Digital Adapter, specifying the host, port,
@@ -61,7 +61,7 @@ Filters are meant to be white list filters, if they are empty, it means that ALL
 
 This class provides methods to add filters for each type and getters to retrieve the configured values.
 
-Key functionalities and exposed capabilities: 
+Key functionalities and exposed capabilities:
 
 - **Basic Configuration**
   - **Adapter ID:** A unique identifier for the HttpDigitalAdapter instance.
@@ -76,13 +76,13 @@ Key functionalities and exposed capabilities:
   - `addEventsFilter(Collection<String> eventsKey)`: Adds a collection of event keys to the event filter.
   - `addRelationshipFilter(String relationshipName)`: Adds a single relationship name to the relationship filter.
   - `addRelationshipsFilter(Collection<String> relationshipNames)`: Adds a collection of relationship names to the relationship filter.
-  - Configured Filter can be accessed using: 
+  - Configured Filter can be accessed using:
     - `getPropertyFilter()`
     - `getActionFilter()`
     - `getEventFilter()`
     - `getRelationshipFilter()`
 
-A basic example without any filter that accesses and uses the entire DT State is: 
+A basic example without any filter that accesses and uses the entire DT State is:
 
 ```java
 HttpDigitalAdapterConfiguration config = new HttpDigitalAdapterConfiguration("my-http-adapter", "localhost", 8080);
@@ -123,8 +123,8 @@ System.out.println("Relationship Filter: " + relationshipFilter);
 
 ### HttpDigitalAdapter
 
-The `HttpDigitalAdapter` itself is the core component responsible for handling HTTP requests and 
-interacting with the underlying Digital Twin. It extends the capabilities of the base DigitalAdapter 
+The `HttpDigitalAdapter` itself is the core component responsible for handling HTTP requests and
+interacting with the underlying Digital Twin. It extends the capabilities of the base DigitalAdapter
 to specifically cater to HTTP-based scenarios.
 
 Key Functionalities:
@@ -166,10 +166,10 @@ digitalTwinEngine.addDigitalTwin(digitalTwin);
 digitalTwinEngine.startAll();
 ```
 
-## HTTP RESTful API 
+## HTTP RESTful API
 
-This section of the documentation provides detailed information about the RESTful API exposed by the WLDT - HTTP Digital Adapter. 
-The API allows you to interact with the Digital Twin (DT) instance, retrieve its state, read properties, actions, event and relationships description, 
+This section of the documentation provides detailed information about the RESTful API exposed by the WLDT - HTTP Digital Adapter.
+The API allows you to interact with the Digital Twin (DT) instance, retrieve its state, read properties, actions, event and relationships description,
 and trigger actions.
 
 Available endpoints with the associated methods are:
@@ -185,12 +185,91 @@ Available endpoints with the associated methods are:
 - `POST` `/state/actions/{actionKey}`: Triggers the specified action (e.g., /state/actions/switch_on) in the Digital Twin state. The raw body contains the action request payload.
 - `GET` `/state/relationships`: Retrieves the list of relationships in the Digital Twin state.
 - `GET` `/state/relationships/{relationshipName}/instances`: Retrieves the instances of the specified relationship (e.g., /state/relationships/insideIn/instances) in the Digital Twin state.
+- `GET` `/storage`: Retrieves Storage Statistics from the target Digital Twin
+- `POST` `/storage/query`: Allows the execution of a query, where the query structure is specified through a JSON Message in the request Body. For additional information about the Query System see [Query System Page](/docs/guides/storage-layer/)
 
 Note: Replace {propertyKey}, {actionKey}, and {relationshipName} with the actual values you want to retrieve or trigger.
-Make sure to use the appropriate HTTP method (GET, POST) and include any required parameters or payload as described in each endpoint's description. For more detailed information, refer to the Postman Collection for this API available in the folder `api`: [http_adapter_api_postman.json](api%2Fhttp_adapter_api_postman.json)`
+Make sure to use the appropriate HTTP method (GET, POST) and include any required parameters or payload as described in each endpoint's description. For more detailed information, refer to the Postman Collection for this API available in the folder `api`: [http_adapter_api_postman.json](https://github.com/wldt/http-digital-adapter-java/blob/master/api/http_adapter_api_postman.json)
 
+Example of Storage Query Requests are the following:
 
+Retrieve the first 4 Digital Twin State Variations
 
+```json
+{
+    "resourceType": "DIGITAL_TWIN_STATE",
+    "queryType": "SAMPLE_RANGE",
+    "startIndex": 0,
+    "endIndex": 3
+}
+```
+
+Retrieve Digital Twin State Variations in a Time Range
+
+```json
+{
+    "resourceType": "DIGITAL_TWIN_STATE",
+    "queryType": "TIME_RANGE",
+    "startIndex": 161989898,
+    "endIndex": 162989898
+}
+```
+
+Retrieve the last Digital Twin State
+
+```json
+{
+    "resourceType": "DIGITAL_TWIN_STATE",
+    "queryType": "LAST_VALUE"
+}
+```
+
+Available keywords for Query Resource Type and Query Type are the following (as explained in the dedicated [Query System Page](/docs/guides/storage-layer/)):
+
+	- PHYSICAL_ASSET_PROPERTY_VARIATION
+		- TIME_RANGE
+		- SAMPLE_RANGE
+		- COUNT
+	- PHYSICAL_ASSET_EVENT_NOTIFICATION
+		- TIME_RANGE
+		- SAMPLE_RANGE
+		- COUNT
+	- PHYSICAL_ACTION_REQUEST
+		- TIME_RANGE
+		- SAMPLE_RANGE
+		- COUNT
+	- DIGITAL_ACTION_REQUEST
+		- TIME_RANGE
+		- SAMPLE_RANGE
+		- COUNT
+	- DIGITAL_TWIN_STATE
+		- TIME_RANGE
+		- SAMPLE_RANGE
+		- COUNT
+		- LAST_VALUE
+	- NEW_PAD_NOTIFICATION
+		- TIME_RANGE
+		- SAMPLE_RANGE
+		- COUNT
+	- UPDATED_PAD_NOTIFICATION
+		- TIME_RANGE
+		- SAMPLE_RANGE
+		- COUNT
+	- PHYSICAL_RELATIONSHIP_INSTANCE_CREATED_NOTIFICATION
+		- TIME_RANGE
+		- SAMPLE_RANGE
+		- COUNT
+	- PHYSICAL_RELATIONSHIP_INSTANCE_DELETED_NOTIFICATION
+		- TIME_RANGE
+		- SAMPLE_RANGE
+		- COUNT
+	- LIFE_CYCLE_EVENT
+		- TIME_RANGE
+		- SAMPLE_RANGE
+		- COUNT
+		- LAST_VALUE
+	- STORAGE_STATS
+		- LAST_VALUE
 
 
 

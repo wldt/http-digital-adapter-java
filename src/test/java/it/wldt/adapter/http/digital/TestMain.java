@@ -13,6 +13,8 @@ import it.wldt.core.engine.DigitalTwin;
 import it.wldt.core.engine.DigitalTwinEngine;
 import it.wldt.exception.EventBusException;
 import it.wldt.exception.PhysicalAdapterException;
+import it.wldt.storage.DefaultWldtStorage;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -57,6 +59,12 @@ public class TestMain {
 
             // Add the HTTP Digital Adapter to the DT
             digitalTwin.addDigitalAdapter(httpDigitalAdapter);
+
+            // Create a new WldtStorage instance using the default implementation and observing all the events
+            DefaultWldtStorage myStorage = new DefaultWldtStorage("test_storage", true);
+
+            // Add the new Default Storage Instance to the Digital Twin Storage Manager
+            digitalTwin.getStorageManager().putStorage(myStorage);
 
             // Create the Digital Twin Engine to execute the created DT instance
             DigitalTwinEngine digitalTwinEngine = new DigitalTwinEngine();

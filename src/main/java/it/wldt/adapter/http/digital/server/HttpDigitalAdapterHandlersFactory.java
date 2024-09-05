@@ -8,7 +8,11 @@ import io.undertow.util.Headers;
 import io.undertow.util.Methods;
 import it.wldt.core.engine.DigitalTwin;
 import it.wldt.core.state.*;
-
+import it.wldt.storage.model.StorageStats;
+import it.wldt.storage.query.QueryRequest;
+import it.wldt.storage.query.QueryRequestType;
+import it.wldt.storage.query.QueryResourceType;
+import it.wldt.storage.query.QueryResult;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -25,7 +29,28 @@ import java.util.function.Supplier;
  */
 public class HttpDigitalAdapterHandlersFactory {
 
+    /**
+     * The content type for JSON responses.
+     */
     private final static String JSON_CONTENT_TYPE = "application/json";
+
+    /**
+     * The query body field for the resource type.
+     */
+    private final static String QUERY_BODY_RESOURCE_TYPE_FIELD = "resourceType";
+
+    /**
+     * The query body field for the query type.
+     */
+    private final static String QUERY_BODY_QUERY_TYPE_FIELD = "queryType";
+
+    private final static String QUERY_BODY_START_MS_FIELD = "startMs";
+
+    private final static String QUERY_BODY_END_MS_FIELD = "startMs";
+
+    private final static String QUERY_BODY_START_INDEX_FIELD = "startIndex";
+
+    private final static String QUERY_BODY_END_INDEX_FIELD = "endIndex";
 
     /**
      * Creates a default routing handler for the HTTP Digital Adapter based on the provided request listener.
@@ -51,6 +76,8 @@ public class HttpDigitalAdapterHandlersFactory {
                 .add(Methods.GET, "/state/relationships", createGetComponentsListHandler(httpDigitalAdapterRequestListener::onRelationshipsGet))
                 .add(Methods.GET, "/state/relationships/{key}", createGetComponentHandler(httpDigitalAdapterRequestListener::onRelationshipGet))
                 .add(Methods.GET, "/state/relationships/{key}/instances", createGetComponentHandler(httpDigitalAdapterRequestListener::onRelationshipInstancesGet))
+                .add(Methods.GET, "/storage", createGetStorageInfoHandler(httpDigitalAdapterRequestListener::onStorageInfoRequest))
+                .add(Methods.POST, "/storage/query", createInvokeQueryHandler(httpDigitalAdapterRequestListener::onQueryRequest))
                 .setFallbackHandler(new SimpleErrorPageHandler());
     }
 
@@ -72,6 +99,82 @@ public class HttpDigitalAdapterHandlersFactory {
     }
 
     /**
+     * Creates an HTTP handler for invoking a Storage Query.
+     *
+     * @return The action invocation handler.
+     */
+    private static HttpHandler createInvokeQueryHandler(Function<QueryRequest, QueryResult<?>> queryExecutionFunction) {
+        return exchange -> {
+
+            exchange.getRequestReceiver().receiveFullBytes((e, requestBody) -> {
+
+                try{
+                    JsonObject requestJson = JsonParser.parseString(new String(requestBody)).getAsJsonObject();
+
+                    if(requestJson != null && requestJson.has(QUERY_BODY_RESOURCE_TYPE_FIELD) && requestJson.has(QUERY_BODY_QUERY_TYPE_FIELD)) {
+
+                            // Create a new Query Request
+                            QueryRequest queryRequest = new QueryRequest();
+
+                            QueryResourceType queryResourceType = QueryResourceType.valueOf(requestJson.get(QUERY_BODY_RESOURCE_TYPE_FIELD).getAsString());
+                            QueryRequestType queryRequestType = QueryRequestType.valueOf(requestJson.get(QUERY_BODY_QUERY_TYPE_FIELD).getAsString());
+
+                            // Set the Query Request Resource Type and Query Request Type
+                            queryRequest.setResourceType(queryResourceType);
+                            queryRequest.setRequestType(queryRequestType);
+
+                            //Check if the QueryRequestType is TIME_RANGE or SAMPLE_RANGE
+                            if(queryRequestType == QueryRequestType.TIME_RANGE){
+
+                                long startMs = requestJson.has(QUERY_BODY_START_MS_FIELD) ? requestJson.get(QUERY_BODY_START_MS_FIELD).getAsLong() : 0;
+                                long endMs = requestJson.has(QUERY_BODY_END_MS_FIELD) ? requestJson.get(QUERY_BODY_END_MS_FIELD).getAsLong() : System.currentTimeMillis();
+
+                                //Set the Query Request Time Range
+                                queryRequest.setStartTimestampMs(startMs);
+                                queryRequest.setEndTimestampMs(endMs);
+                            }
+                            else if(queryRequestType == QueryRequestType.SAMPLE_RANGE) {
+
+                                int startIndex = requestJson.has(QUERY_BODY_START_INDEX_FIELD) ? requestJson.get(QUERY_BODY_START_INDEX_FIELD).getAsInt() : 0;
+                                int endIndex = requestJson.has(QUERY_BODY_END_INDEX_FIELD) ? requestJson.get(QUERY_BODY_END_INDEX_FIELD).getAsInt() : 0;
+
+                                //Set the Query Request Sample Range
+                                queryRequest.setStartIndex(startIndex);
+                                queryRequest.setEndIndex(endIndex);
+                            }
+
+                            // Execute the Query Request
+                            QueryResult<?> queryResult = queryExecutionFunction.apply(queryRequest);
+
+                            // Create a new Gson Instance
+                            final Gson gson = new Gson();
+
+                            // Check if the Query Result is not null and successful
+                            if(queryResult != null && queryResult.isSuccessful())
+                                exchange.setStatusCode(200);
+                            else
+                                exchange.setStatusCode(400);
+
+                            exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, JSON_CONTENT_TYPE);
+                            exchange.getResponseSender().send(gson.toJson(queryResult));
+                    }
+                    else {
+                        exchange.setStatusCode(400);
+                        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, JSON_CONTENT_TYPE);
+                        exchange.getResponseSender().send("{\"error\": \"Invalid Query Request !\"}");
+                    }
+
+                }catch (Exception exception){
+                    String errorMessage = String.format("{\"error\": \"Exception Executing Query ! %s\"}", exception.getMessage());
+                    exchange.setStatusCode(500);
+                    exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
+                    exchange.getResponseSender().send(errorMessage);
+                }
+            });
+        };
+    }
+
+    /**
      * Creates an HTTP handler for retrieving a list of components (properties, actions, events, relationships).
      *
      * @param componentsSupplier The supplier for obtaining the list of components.
@@ -82,6 +185,27 @@ public class HttpDigitalAdapterHandlersFactory {
         return exchange -> {
             exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, JSON_CONTENT_TYPE);
             exchange.getResponseSender().send(getGson().toJson(componentsSupplier.get()));
+        };
+    }
+
+    /**
+     * Creates an HTTP handler for retrieving the State History of the Digital Twin.
+     * @param storageInfoSupplier The function to produce the specified component.
+     */
+    public static <T> HttpHandler createGetStorageInfoHandler(Supplier<StorageStats> storageInfoSupplier){
+        return exchange -> {
+            exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, JSON_CONTENT_TYPE);
+            final StorageStats storageInfo = storageInfoSupplier.get();
+
+            if(storageInfo != null){
+                final Gson gson = new Gson();
+                exchange.getResponseSender().send(gson.toJson(storageInfo));
+            }
+            else {
+                exchange.setStatusCode(404);
+                exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
+                exchange.getResponseSender().send("{\"error\": \"Storage Info not available !\"}");
+            }
         };
     }
 

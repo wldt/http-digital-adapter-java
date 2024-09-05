@@ -14,11 +14,11 @@ repositories {
 }
 
 dependencies {
-    api("io.undertow:undertow-core:2.2.27.Final")
+    api("io.undertow:undertow-core:2.3.16.Final")
     api("com.github.spullara.mustache.java:compiler:0.9.10")
-    api("ch.qos.logback:logback-classic:1.4.12")
+    api("ch.qos.logback:logback-classic:1.4.14")
     api("com.google.code.gson:gson:2.10")
-    api("io.github.wldt:wldt-core:0.3.0")
+    api("io.github.wldt:wldt-core:0.4.0")
     testImplementation("junit:junit:4.13.2")
 }
 
@@ -39,7 +39,7 @@ tasks.withType<Javadoc>() {
 }
 
 group = "io.github.wldt"
-version = "0.1.1"
+version = "0.2"
 description = "Digital Adapter to expose the Digital Twin with the HTTP protocol within the WLDT Library"
 java.sourceCompatibility = JavaVersion.VERSION_1_8
 
@@ -52,8 +52,8 @@ publishing {
             val snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots"
             url = uri(if (version.toString().endsWith("SNAPSHOT")) snapshotsRepoUrl else releasesRepoUrl)
             credentials {
-                username = (properties["ossrhUsername"] as String?)
-                password = (properties["ossrhPassword"] as String?)
+                username = (properties["ossrhToken"] as String?)
+                password = (properties["ossrhTokenPassword"] as String?)
             }
         }
         maven {
