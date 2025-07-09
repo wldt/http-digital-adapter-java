@@ -23,7 +23,8 @@ The correct mapping and compatibility between versions is reported in the follow
 | **http-digital-adapter** |   wldt-core 0.2.1  |   wldt-core 0.3.0  |   wldt-core 0.4.0  |
 |:------------------------:|:------------------:|:------------------:|:------------------:|
 |          0.1.1           |         :x:        | :white_check_mark: | :white_check_mark: |
-|          0.2             |         :x:        |         :x:        | :white_check_mark: |
+|           0.2            |         :x:        |         :x:        | :white_check_mark: |
+|          0.2.1           |         :x:        |         :x:        | :white_check_mark: |
 
 ## Installation
 
@@ -35,14 +36,14 @@ To use HttpDigitalAdapter in your Java project, you can include it as a dependen
 <dependency>
     <groupId>io.github.wldt</groupId>
     <artifactId>http-digital-adapter</artifactId>
-    <version>0.2</version>
+    <version>0.2.1</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```groovy
-implementation 'io.github.wldt:http-digital-adapter:0.2'
+implementation 'io.github.wldt:http-digital-adapter:0.2.1'
 ```
 
 ## Class Structure & Functionalities
@@ -142,6 +143,15 @@ Create HttpDigitalAdapterConfiguration:
 ```java
 HttpDigitalAdapterConfiguration config = new HttpDigitalAdapterConfiguration("my-http-adapter", "localhost", 8080);
 ```
+It's possible to create HttpDigitalAdapterConfiguration also with configuration JSON file:
+
+```java
+// Json File example: { "id": "my-http-adapter", "host": "localhost", "port": 8080 }
+
+File jsonFile = new File("path-to-json-file");
+HttpDigitalAdapterConfiguration config = new HttpDigitalAdapterConfiguration(jsonFile);
+```
+
 Instantiate HttpDigitalAdapter:
 
 ```java

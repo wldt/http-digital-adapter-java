@@ -15,6 +15,7 @@ import it.wldt.exception.EventBusException;
 import it.wldt.exception.PhysicalAdapterException;
 import it.wldt.storage.DefaultWldtStorage;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -53,6 +54,10 @@ public class TestMain {
 
             // Create Http Digital Adapter Configuration
             HttpDigitalAdapterConfiguration config = new HttpDigitalAdapterConfiguration("test-http-da", "localhost", 3000);
+
+            // Create Http Digital Adapter Configuration using JSON file
+            //File jsonFile = new File("src/test/config/HttpDigitalAdapterConfiguration.json");
+            //HttpDigitalAdapterConfiguration config = new HttpDigitalAdapterConfiguration(jsonFile);
 
             // Create the Digital Adapter Http with its configuration and the reference of the DT instance to describe its structure
             HttpDigitalAdapter httpDigitalAdapter = new HttpDigitalAdapter(config, digitalTwin);

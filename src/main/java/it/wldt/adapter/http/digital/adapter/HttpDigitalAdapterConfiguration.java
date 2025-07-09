@@ -1,7 +1,10 @@
 package it.wldt.adapter.http.digital.adapter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import it.wldt.adapter.http.digital.exception.HttpDigitalAdapterConfigurationException;
+import it.wldt.adapter.http.digital.model.HttpDigitalAdapterFileConfiguration;
 
+import java.io.File;
 import java.util.*;
 
 /**
@@ -67,6 +70,26 @@ public class HttpDigitalAdapterConfiguration {
         this.id = id;
         this.host = host;
         this.port = port;
+        propertyFilter = new LinkedList<>();
+        actionFilter = new LinkedList<>();
+        eventFilter = new LinkedList<>();
+        relationshipFilter = new LinkedList<>();
+    }
+
+    /** Constructs a new {@code HttpDigitalAdapterConfiguration} with the specified
+     * settings inside the configuration file.
+     *
+     * @param jsonFile The configuration JSON file.
+     * @throws HttpDigitalAdapterConfigurationException if configuration JSON file is not valid.
+     */
+    public HttpDigitalAdapterConfiguration(File jsonFile) throws HttpDigitalAdapterConfigurationException {
+        if(!isValid(jsonFile)) {
+            throw new HttpDigitalAdapterConfigurationException("The configuration File must exists, must be a file and must be readable");
+        }
+        HttpDigitalAdapterFileConfiguration fileConfiguration = getHttpFileConfiguration(jsonFile);
+        this.id = fileConfiguration.getId();
+        this.host = fileConfiguration.getHost();
+        this.port = fileConfiguration.getPort();
         propertyFilter = new LinkedList<>();
         actionFilter = new LinkedList<>();
         eventFilter = new LinkedList<>();
@@ -235,5 +258,31 @@ public class HttpDigitalAdapterConfiguration {
             actualFilter = new LinkedList<>();
         }
         actualFilter.addAll(filterKeys);
+    }
+
+    /**
+     * Read a json File and store data inside a HttpDigitalAdapterFileConfiguration class which is returned.
+     *
+     * @param jsonFile is the File that must be read to get configuration.
+     * @return an HttpDigitalAdapterFileConfiguration that contains all the config info inside the File.
+     * @throws HttpDigitalAdapterConfigurationException If there is a configuration error.
+     */
+    private HttpDigitalAdapterFileConfiguration getHttpFileConfiguration(File jsonFile) throws HttpDigitalAdapterConfigurationException {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.readValue(jsonFile, HttpDigitalAdapterFileConfiguration.class);
+        } catch (Exception e) {
+            throw new HttpDigitalAdapterConfigurationException("Error occurred when reading http digital adapter configuration file.");
+        }
+    }
+
+    /**
+     * Checks if the given file parameter is valid (exists, is a file, can be read).
+     *
+     * @param param The file parameter to be checked.
+     * @return true if the file exists, is a file and can be read.
+     */
+    private boolean isValid(File param){
+        return param.exists() && param.isFile() && param.canRead();
     }
 }
